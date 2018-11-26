@@ -1,0 +1,190 @@
+---
+title: "README"
+author: "Nabila"
+date: "26 de noviembre de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+cc = read.csv('climate_change.csv')
+
+```
+ 
+## Regresion Lineal simple
+
+```{r}
+head(cc)
+```
+
+```{r}
+ggplot (cc, aes(Temp, CO2)) +
+  geom_point()
+```
+
+```{r}
+train <- subset(cc,Year <=2006)
+test <- subset(cc,Year > 2006)
+
+LinealSimple = lm(Temp ~ CO2, data = train)
+summary(LinealSimple)
+
+```
+```{r}
+ggplot (train, aes(CO2, Temp)) +
+  geom_point() +
+  geom_abline(intercept = 
+                coef(LinealSimple)[1],
+               slope= coef(LinealSimple)[2], colour="red")
+
+```
+
+### Regresion Multiple
+
+```{r}
+fit = lm(Temp ~ ., data = train)
+summary(fit)
+```
+
+```{r}
+fit2 = lm(Temp ~ MEI+ CH4+N2O+CFC.11 + CFC.12 + TSI+ Aerosols, data = train)
+summary(fit2)
+```
+```{r}
+fit3 = step(fit)
+```
+
+```{r}
+summary(fit3)
+```
+
+```{r}
+pred = predict(fit3, newdata = test)
+pred
+```
+
+```{r}
+SSE = sum((pred-test$Temp)^2)
+SST = sum((mean(train$Temp)- test$Temp)^2)
+R2 = 1-SSE/SST
+R2
+```
+```{r}
+admision = read.csv('https://stats.idre.ucla.edu/stat/data/binary.csv')
+head(admision)
+```
+
+```{r}
+ggplot(admision, aes(gpa, admit))+
+  geom_point()
+```
+
+```{r}
+admision$rank = factor (admision$rank)
+train = admision[1:350,]
+test = admision[351:400,2:4]
+
+fitglm = glm(admit ~.,data = train, family = 'binomial')
+summary(fitglm)
+```
+
+```{r}
+test$glm = predict(fitglm, newdata = test, type = 'response')
+head(test)
+```
+```{r}
+ggplot(test, aes(rank, glm))+
+  geom_boxplot()
+```
+## Arbol de Decision
+
+```{r}
+library(rpart)
+#install.packages("rpart.plot")
+library(rpart.plot)
+fitrpart = rpart(admit~., data = train, method='class')
+print(fitrpart)
+```
+
+```{r}
+prp (fitrpart, uniform =T, main = 'Rpart Tree')
+```
+```{r}
+summary(fitrpart)
+```
+
+```{r}
+test$rpart= predict(fitrpart,test)
+head(test)
+
+
+```
+## Regresion espacial
+
+```{r}
+#install.packages('dismo')
+library(dismo)
+
+bradypus = read.csv('bradypus.csv')
+
+bradypus =bradypus[,2:3]
+head(bradypus)
+```
+```{r}
+files = list.files(path =paste(system.file(package = 'dismo'),'/ex', sep =''), pattern = 'grd',
+                   full.names = T)
+
+predictores = stack(files)
+
+predictores = dropLayer(predictores,'biome')
+
+plot(predictores)
+```
+
+```{r}
+plot(predictores,1)
+points(bradypus, bg='red',cex =1, pch =21)
+```
+```{r}
+bradypus  = extract(predictores, bradypus)
+head(bradypus)
+```
+
+```{r}
+bradypus = as.data.frame(bradypus)
+
+bradypus$presencia =1
+head(bradypus)
+
+
+```
+
+```{r}
+back = randomPoints(predictores, n=1000)
+colnames(back) =c('lon', 'lat')
+
+
+plot(predictores,1)
+points(back, pch='-', cex=0.5, col='black')
+```
+```{r}
+back = extract(predictores, back)
+back = as.data.frame(back)
+back$presencia=0
+head(back)
+```
+
+```{r}
+datos = rbind(bradypus, back)
+fitbrad = glm(presencia~., data = datos)
+
+summary(fitbrad)
+```
+
+```{r}
+predicted = predict(predictores, fitbrad)
+plot(predicted)
+
+```
+
